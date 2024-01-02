@@ -15,4 +15,6 @@ concept BareDefaultConstructable = std::is_default_constructible_v<Bare<T>>;
 template<typename T>
 concept DefaultConstructable = std::is_default_constructible_v<T>;
 
+template<typename T>
+concept NotRRef = !std::is_rvalue_reference_v<T>;
 }

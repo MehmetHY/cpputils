@@ -8,6 +8,7 @@ enable_testing()
 
 add_executable(cpputilstests
     result.cc
+    event.cc
 )
 
 include(FetchContent)

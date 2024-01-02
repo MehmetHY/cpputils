@@ -7,8 +7,10 @@ project(cpputilssrc VERSION 0.1 LANGUAGES CXX)
 add_library(cpputilssrc SHARED
     include/cpputils/export.hpp
     include/cpputils/result.hpp
+    include/cpputils/event.hpp
 
     result.cpp
+    event.cpp
 )
 
 target_include_directories(cpputilssrc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
