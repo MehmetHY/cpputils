@@ -2,177 +2,182 @@
 
 #include "export.hpp"
 #include <string>
+#include <type_traits>
 #include <vector>
-#include <map>
+#include <span>
 #include "concepts.hpp"
-#include <memory>
 
 namespace cu
 {
 
-using Error            = std::string;
-using ErrorDescription = Error;
-using ErrorList        = std::vector<Error>;
+using ErrorMessage     = std::string;
+using ErrorMessageList = std::vector<ErrorMessage>;
 
 template<DefaultConstructable TCode>
-class CU_EXPORT ErrorInfo
+class CU_EXPORT Error
 {
-public: // Types ______________________________________________________________
+public:
+    Error()                   = default;
+    virtual ~Error() noexcept = default;
 
-public: // Constructors & Destructor __________________________________________
-    ErrorInfo() noexcept = default;
-
-    ErrorInfo(TCode code, ErrorDescription description) noexcept
-        : _code{std::move(code)}
-        , _description{std::move(description)}
+    Error(TCode code, ErrorMessage message)
+        : _code{std::forward<TCode>(code)}
+        , _message{std::move(message)}
     {
     }
 
-    virtual ~ErrorInfo() noexcept = default;
-
-public: // Move Semantics _____________________________________________________
-    ErrorInfo(ErrorInfo<TCode>&&) noexcept                           = default;
-    virtual ErrorInfo<TCode>& operator=(ErrorInfo<TCode>&&) noexcept = default;
-
-public: // Copy Semantics _____________________________________________________
-    ErrorInfo(const ErrorInfo<TCode>&)                   = default;
-    ErrorInfo<TCode>& operator=(const ErrorInfo<TCode>&) = default;
-
-public: // Operators __________________________________________________________
-
-public: // Events _____________________________________________________________
-
-public: // Methods ____________________________________________________________
-    const TCode& code() const
+    const std::remove_reference_t<TCode>& code() const noexcept
     {
         return _code;
     }
 
-    const ErrorDescription& description() const
+    const ErrorMessage& message() const noexcept
     {
-        return _description;
+        return _message;
     }
 
-private: // Fields ____________________________________________________________
-    TCode            _code{};
-    ErrorDescription _description{};
+private:
+    const TCode        _code;
+    const ErrorMessage _message;
 };
 
-using ErrorDictionary = ErrorInfo<Error>;
-using LineNumber      = size_t;
-using LineError       = ErrorInfo<LineNumber>;
+template<DefaultConstructable TCode>
+class CU_EXPORT Errors
+{
+public:
+    Errors()                   = default;
+    virtual ~Errors() noexcept = default;
+
+    Errors(TCode code, ErrorMessageList messages)
+        : _code{std::forward<TCode>(code)}
+        , _messages{std::move(messages)}
+    {
+    }
+
+    void addErrorMessage(ErrorMessage message)
+    {
+        _messages.push_back(std::move(message));
+    }
+
+    const std::remove_reference_t<TCode>& code() const noexcept
+    {
+        return _code;
+    }
+
+    std::span<const ErrorMessage> messages() const noexcept
+    {
+        return _messages;
+    }
+
+private:
+    const TCode            _code;
+    ErrorMessageList _messages;
+};
 
 template<DefaultConstructable TError>
 class CU_EXPORT ResultInfo
 {
-public: // Types ______________________________________________________________
+public:
+    ResultInfo()
+        : _succeeded{true}
+    {
+    }
 
-public: // Constructors & Destructor __________________________________________
-    ResultInfo() noexcept = default;
-
-    ResultInfo(TError error) noexcept
-        : _succeeded{false}
-        , _error{std::move(error)}
+    ResultInfo(TError error)
+        : _error{std::forward<TError>(error)}
     {
     }
 
     virtual ~ResultInfo() noexcept = default;
 
-public: // Move Semantics _____________________________________________________
-    ResultInfo(ResultInfo<TError>&&) noexcept = default;
-    virtual ResultInfo<TError>& operator=(ResultInfo<TError>&&) noexcept =
-        default;
-
-public: // Copy Semantics _____________________________________________________
-    ResultInfo(const ResultInfo<TError>&)                    = default;
-    ResultInfo<TError>& operator=(const ResultInfo<TError>&) = default;
-
-public: // Operators __________________________________________________________
-
-public: // Events _____________________________________________________________
-
-public: // Methods ____________________________________________________________
-    bool succeeded() const
+    bool succeeded() const noexcept
     {
         return _succeeded;
     }
 
-    const TError& error() const
+    bool failed() const noexcept
+    {
+        return !_succeeded;
+    }
+
+    const std::remove_reference_t<TError>& error() const noexcept
     {
         return _error;
     }
 
-    static ResultInfo<TError> success()
+    static ResultInfo success()
     {
-        return ResultInfo<TError>();
+        return {};
     }
 
-    static ResultInfo<TError> failure(TError error)
+    static ResultInfo failure(TError error)
     {
-        return ResultInfo<TError>(std::move(error));
+        return {std::forward<TError>(error)};
     }
 
-private: // Fields ____________________________________________________________
-    bool   _succeeded{true};
-    TError _error{};
+private:
+    const bool   _succeeded{};
+    const TError _error{};
 };
 
-using Result = ResultInfo<Error>;
+using Result = ResultInfo<ErrorMessage>;
 
-template<typename TObj, DefaultConstructable TError>
-class CU_EXPORT ResultObject : public ResultInfo<TError>
+template<typename TValue, DefaultConstructable TError>
+class CU_EXPORT ResultObject
 {
-public: // Types ______________________________________________________________
-
-public: // Constructors & Destructor __________________________________________
-    ResultObject(TError error) noexcept
-        : ResultInfo<TError>(std::move(error))
+public:
+    ResultObject(TValue value)
+        : _value{std::forward<TValue>(value)}
     {
     }
 
-    ResultObject(std::unique_ptr<TObj> obj) noexcept
-        : ResultInfo<TError>()
-        , _obj{std::move(obj)}
+    ResultObject(TError error, TValue defaultValue = {})
+        : _value{std::forward<TValue>(defaultValue)}
+        , _succeeded{false}
+        , _error{std::forward<TError>(error)}
     {
     }
 
     virtual ~ResultObject() noexcept = default;
 
-public: // Move Semantics _____________________________________________________
-    ResultObject(ResultObject<TObj, TError>&&) noexcept = default;
-    virtual ResultObject<TObj, TError>& operator=(
-        ResultObject<TObj, TError>&&) noexcept = default;
-
-public: // Copy Semantics _____________________________________________________
-    ResultObject(const ResultObject<TObj, TError>&) = delete;
-    ResultObject<TObj, TError>& operator=(const ResultObject<TObj, TError>&) =
-        delete;
-
-public: // Operators __________________________________________________________
-
-public: // Events _____________________________________________________________
-
-public: // Methods ____________________________________________________________
-    static ResultObject<TObj, TError> success(std::unique_ptr<TObj> obj)
+    typename std::remove_reference_t<TValue>& value() noexcept
     {
-        return ResultObject<TObj, TError>(std::move(obj));
+        return _value;
     }
 
-    static ResultObject<TObj, TError> failure(TError error)
+    bool succeeded() const noexcept
     {
-        return ResultObject<TObj, TError>(std::move(error));
+        return _succeeded;
     }
 
-    std::unique_ptr<TObj> object()
+    bool failed() const noexcept
     {
-        return std::move(_obj);
+        return !_succeeded;
     }
 
-private: // Fields ____________________________________________________________
-    std::unique_ptr<TObj> _obj{};
+    static ResultObject<TValue, TError> success(TValue value)
+    {
+        return {std::forward<TValue>(value)};
+    }
+
+    static ResultObject<TValue, TError> failure(TError error,
+                                                TValue defaultValue = {})
+    {
+        return {std::forward<TError>(error),
+                std::forward<TValue>(defaultValue)};
+    }
+
+    const typename std::remove_reference_t<TError>& error() const noexcept
+    {
+        return _error;
+    }
+
+private:
+    TValue       _value;
+    const bool   _succeeded{true};
+    const TError _error{};
 };
 
-template<typename TObj>
-using ErrorOr = ResultObject<TObj, Error>;
-
+template<typename TValue>
+using ErrorOr = ResultObject<TValue, ErrorMessage>;
 }
