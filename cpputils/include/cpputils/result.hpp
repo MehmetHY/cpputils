@@ -10,17 +10,17 @@
 namespace cu
 {
 
-using ErrorMessage     = std::string;
-using ErrorMessageList = std::vector<ErrorMessage>;
+using Message     = std::string;
+using MessageList = std::vector<Message>;
 
 template<DefaultConstructable TCode>
-class CU_EXPORT Error
+class CU_EXPORT Status
 {
 public:
-    Error()                   = default;
-    virtual ~Error() noexcept = default;
+    Status()                   = default;
+    virtual ~Status() noexcept = default;
 
-    Error(TCode code, ErrorMessage message)
+    Status(TCode code, Message message)
         : _code{std::forward<TCode>(code)}
         , _message{std::move(message)}
     {
@@ -31,30 +31,30 @@ public:
         return _code;
     }
 
-    const ErrorMessage& message() const noexcept
+    const Message& message() const noexcept
     {
         return _message;
     }
 
 private:
-    const TCode        _code;
-    const ErrorMessage _message;
+    const TCode   _code;
+    const Message _message;
 };
 
 template<DefaultConstructable TCode>
-class CU_EXPORT Errors
+class CU_EXPORT StatusMessageList
 {
 public:
-    Errors()                   = default;
-    virtual ~Errors() noexcept = default;
+    StatusMessageList()                   = default;
+    virtual ~StatusMessageList() noexcept = default;
 
-    Errors(TCode code, ErrorMessageList messages)
+    StatusMessageList(TCode code, MessageList messages)
         : _code{std::forward<TCode>(code)}
         , _messages{std::move(messages)}
     {
     }
 
-    void addErrorMessage(ErrorMessage message)
+    void addMessage(Message message)
     {
         _messages.push_back(std::move(message));
     }
@@ -64,17 +64,17 @@ public:
         return _code;
     }
 
-    std::span<const ErrorMessage> messages() const noexcept
+    std::span<const Message> messages() const noexcept
     {
         return _messages;
     }
 
 private:
-    const TCode            _code;
-    ErrorMessageList _messages;
+    const TCode _code;
+    MessageList _messages;
 };
 
-template<DefaultConstructable TError>
+template<DefaultConstructable TStatus>
 class CU_EXPORT ResultInfo
 {
 public:
@@ -83,8 +83,8 @@ public:
     {
     }
 
-    ResultInfo(TError error)
-        : _error{std::forward<TError>(error)}
+    ResultInfo(TStatus error)
+        : _error{std::forward<TStatus>(error)}
     {
     }
 
@@ -100,7 +100,7 @@ public:
         return !_succeeded;
     }
 
-    const std::remove_reference_t<TError>& error() const noexcept
+    const std::remove_reference_t<TStatus>& error() const noexcept
     {
         return _error;
     }
@@ -110,19 +110,19 @@ public:
         return {};
     }
 
-    static ResultInfo failure(TError error)
+    static ResultInfo failure(TStatus error)
     {
-        return {std::forward<TError>(error)};
+        return {std::forward<TStatus>(error)};
     }
 
 private:
-    const bool   _succeeded{};
-    const TError _error{};
+    const bool    _succeeded{};
+    const TStatus _error{};
 };
 
-using Result = ResultInfo<ErrorMessage>;
+using Result = ResultInfo<Message>;
 
-template<typename TValue, DefaultConstructable TError>
+template<typename TValue, DefaultConstructable TStatus>
 class CU_EXPORT ResultObject
 {
 public:
@@ -131,10 +131,10 @@ public:
     {
     }
 
-    ResultObject(TError error, TValue defaultValue = {})
+    ResultObject(TStatus error, TValue defaultValue = {})
         : _value{std::forward<TValue>(defaultValue)}
         , _succeeded{false}
-        , _error{std::forward<TError>(error)}
+        , _error{std::forward<TStatus>(error)}
     {
     }
 
@@ -155,29 +155,29 @@ public:
         return !_succeeded;
     }
 
-    static ResultObject<TValue, TError> success(TValue value)
+    static ResultObject<TValue, TStatus> success(TValue value)
     {
         return {std::forward<TValue>(value)};
     }
 
-    static ResultObject<TValue, TError> failure(TError error,
-                                                TValue defaultValue = {})
+    static ResultObject<TValue, TStatus> failure(TStatus error,
+                                                 TValue  defaultValue = {})
     {
-        return {std::forward<TError>(error),
+        return {std::forward<TStatus>(error),
                 std::forward<TValue>(defaultValue)};
     }
 
-    const typename std::remove_reference_t<TError>& error() const noexcept
+    const typename std::remove_reference_t<TStatus>& error() const noexcept
     {
         return _error;
     }
 
 private:
-    TValue       _value;
-    const bool   _succeeded{true};
-    const TError _error{};
+    TValue        _value;
+    const bool    _succeeded{true};
+    const TStatus _error{};
 };
 
 template<typename TValue>
-using ErrorOr = ResultObject<TValue, ErrorMessage>;
+using ErrorOr = ResultObject<TValue, Message>;
 }
