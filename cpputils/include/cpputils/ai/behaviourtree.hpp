@@ -53,6 +53,8 @@ protected:
     size_t                               _currentNodeIndex{};
     std::vector<std::unique_ptr<BTNode>> _children{};
 public:
+    virtual ~BTControlNode() noexcept = default;
+
     template<InheritsBTNode TNode, typename... TArgs>
     TNode* createChild(TArgs&&... args)
     {
@@ -149,16 +151,17 @@ class BTAction : public BTNode
     std::function<BTStatus(void)> _action;
 
 public:
-    BTAction(std::function<BTStatus(void)> action)
+    BTAction(std::function<BTStatus(void)> action) noexcept
         : _action{std::move(action)}
     {
     }
+
+    virtual ~BTAction() noexcept = default;
 
     BTStatus tick() override
     {
         return _action();
     }
 };
-
 
 }

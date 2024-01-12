@@ -10,6 +10,7 @@ add_executable(cpputilstests
     result.cc
     event.cc
     ai/behaviourtree.cc
+    ai/statemachine.cc
 )
 
 include(FetchContent)
