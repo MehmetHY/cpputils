@@ -9,6 +9,7 @@ enable_testing()
 add_executable(cpputilstests
     result.cc
     event.cc
+    ai/behaviourtree.cc
 )
 
 include(FetchContent)

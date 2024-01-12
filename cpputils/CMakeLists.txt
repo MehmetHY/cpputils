@@ -8,9 +8,11 @@ add_library(cpputilssrc SHARED
     include/cpputils/export.hpp
     include/cpputils/result.hpp
     include/cpputils/event.hpp
+    include/cpputils/ai/behaviourtree.hpp
 
     result.cpp
     event.cpp
+    ai/behaviourtree.cpp
 )
 
 target_include_directories(cpputilssrc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
