@@ -9,6 +9,7 @@ enable_testing()
 add_executable(cpputilstests
     result.cc
     event.cc
+    nullable.cc
     ai/behaviourtree.cc
     ai/statemachine.cc
 )

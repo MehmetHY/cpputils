@@ -8,6 +8,7 @@ add_library(cpputilssrc SHARED
     include/cpputils/export.hpp
     include/cpputils/result.hpp
     include/cpputils/event.hpp
+    include/cpputils/nullable.hpp
     include/cpputils/ai/behaviourtree.hpp
 
     result.cpp
