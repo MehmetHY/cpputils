@@ -1,183 +1,184 @@
 #pragma once
 
-#include "export.hpp"
 #include <string>
 #include <type_traits>
-#include <vector>
-#include <span>
-#include "concepts.hpp"
+#include "nullable.hpp"
+#include <list>
 
 namespace cu
 {
 
-using Message     = std::string;
-using MessageList = std::vector<Message>;
-
-template<DefaultConstructable TCode>
-class CU_EXPORT Status
+class Result
 {
-public:
-    Status()                   = default;
-    virtual ~Status() noexcept = default;
+    bool        _succeeded;
+    std::string _message;
 
-    Status(TCode code, Message message)
-        : _code{std::forward<TCode>(code)}
+public:
+    Result(bool succeeded = true, std::string message = {})
+        : _succeeded{succeeded}
         , _message{std::move(message)}
     {
     }
 
-    const std::remove_reference_t<TCode>& code() const noexcept
+    bool succeeded() const noexcept
     {
-        return _code;
+        return _succeeded;
     }
 
-    const Message& message() const noexcept
+    bool failed() const noexcept
+    {
+        return !_succeeded;
+    }
+
+    const std::string& message() const noexcept
     {
         return _message;
     }
-
-private:
-    const TCode   _code;
-    const Message _message;
 };
 
-template<DefaultConstructable TCode>
-class CU_EXPORT StatusMessageList
+template<typename TData>
+class DataResult : public Result
 {
+    Nullable<TData> _data{};
+
 public:
-    StatusMessageList()                   = default;
-    virtual ~StatusMessageList() noexcept = default;
-
-    StatusMessageList(TCode code, MessageList messages)
-        : _code{std::forward<TCode>(code)}
-        , _messages{std::move(messages)}
+    DataResult(TData data, std::string message = {})
+        : Result(true, std::move(message))
+        , _data{std::forward<TData>(data)}
     {
     }
 
-    void addMessage(Message message)
+    DataResult(std::string message = {})
+        : Result(false, std::move(message))
     {
-        _messages.push_back(std::move(message));
     }
 
-    const std::remove_reference_t<TCode>& code() const noexcept
+    std::remove_reference_t<TData>& data()
     {
-        return _code;
+        if (failed())
+            throw std::runtime_error(
+                "Can not get the data when result is failure.");
+
+        return _data.get();
+    }
+};
+
+template<typename TStatus, typename TData>
+class Response
+{
+    TStatus         _status;
+    Nullable<TData> _data{};
+
+public:
+    Response(TStatus status)
+        : _status{std::forward<TStatus>(status)}
+    {
     }
 
-    std::span<const Message> messages() const noexcept
+    Response(TStatus status, TData data)
+        : _status{std::forward<TStatus>(status)}
+        , _data{std::forward<TData>(data)}
+    {
+    }
+
+    const std::remove_cvref_t<TStatus>& status() const noexcept
+    {
+        return _status;
+    }
+
+    std::remove_reference_t<TData>& data()
+    {
+        if (_data.isNull())
+            throw std::runtime_error("The data is null.");
+
+        return _data.get();
+    }
+};
+
+template<typename TStatusType>
+class Status
+{
+    TStatusType _status;
+    std::string _message;
+
+public:
+    Status(TStatusType status, std::string message = {})
+        : _status{std::forward<TStatusType>(status)}
+        , _message{std::move(message)}
+    {
+    }
+
+    const std::remove_cvref_t<TStatusType>& status() const noexcept
+    {
+        return _status;
+    }
+
+    const std::string& message() const noexcept
+    {
+        return _message;
+    }
+};
+
+template<typename TStatusType, typename TData>
+class DataStatus : public Status<TStatusType>
+{
+    Nullable<TData> _data{};
+
+public:
+    DataStatus(TStatusType status, std::string message = {})
+        : Status<TStatusType>(std::forward<TStatusType>(status),
+                              std::move(message))
+    {
+    }
+
+    DataStatus(TStatusType status, TData data, std::string message = {})
+        : Status<TStatusType>(std::forward<TStatusType>(status),
+                              std::move(message))
+        , _data{std::forward<TData>(data)}
+    {
+    }
+
+    std::remove_reference_t<TData>& data()
+    {
+        if (_data.isNull())
+            throw std::runtime_error("The data is null.");
+
+        return _data.get();
+    }
+};
+
+class ResultCollector
+{
+    bool                   _anySucceeded{};
+    bool                   _anyFailed{};
+    std::list<std::string> _messages{};
+
+public:
+    void addResult(const Result& result)
+    {
+        if (result.failed())
+            _anyFailed = true;
+        else
+            _anySucceeded = true;
+
+        if (!result.message().empty())
+            _messages.push_back(result.message());
+    }
+
+    bool anyFailed() const noexcept
+    {
+        return _anyFailed;
+    }
+
+    bool anySucceeded() const noexcept
+    {
+        return _anySucceeded;
+    }
+
+    const std::list<std::string>& messages() const noexcept
     {
         return _messages;
     }
-
-private:
-    const TCode _code;
-    MessageList _messages;
 };
 
-template<DefaultConstructable TStatus>
-class CU_EXPORT ResultInfo
-{
-public:
-    ResultInfo()
-        : _succeeded{true}
-    {
-    }
-
-    ResultInfo(TStatus error)
-        : _error{std::forward<TStatus>(error)}
-    {
-    }
-
-    virtual ~ResultInfo() noexcept = default;
-
-    bool succeeded() const noexcept
-    {
-        return _succeeded;
-    }
-
-    bool failed() const noexcept
-    {
-        return !_succeeded;
-    }
-
-    const std::remove_reference_t<TStatus>& error() const noexcept
-    {
-        return _error;
-    }
-
-    static ResultInfo success()
-    {
-        return {};
-    }
-
-    static ResultInfo failure(TStatus error)
-    {
-        return {std::forward<TStatus>(error)};
-    }
-
-private:
-    const bool    _succeeded{};
-    const TStatus _error{};
-};
-
-using Result = ResultInfo<Message>;
-
-template<typename TValue, DefaultConstructable TStatus>
-class CU_EXPORT ResultObject
-{
-public:
-    ResultObject(TValue value)
-        : _value{std::forward<TValue>(value)}
-    {
-    }
-
-    ResultObject(TStatus error, TValue defaultValue = {})
-        : _value{std::forward<TValue>(defaultValue)}
-        , _succeeded{false}
-        , _error{std::forward<TStatus>(error)}
-    {
-    }
-
-    virtual ~ResultObject() noexcept = default;
-
-    typename std::remove_reference_t<TValue>& value() noexcept
-    {
-        return _value;
-    }
-
-    bool succeeded() const noexcept
-    {
-        return _succeeded;
-    }
-
-    bool failed() const noexcept
-    {
-        return !_succeeded;
-    }
-
-    static ResultObject<TValue, TStatus> success(TValue value)
-    {
-        return {std::forward<TValue>(value)};
-    }
-
-    static ResultObject<TValue, TStatus> failure(TStatus error,
-                                                 TValue  defaultValue = {})
-    {
-        return {std::forward<TStatus>(error),
-                std::forward<TValue>(defaultValue)};
-    }
-
-    const typename std::remove_reference_t<TStatus>& error() const noexcept
-    {
-        return _error;
-    }
-
-private:
-    TValue        _value;
-    const bool    _succeeded{true};
-    const TStatus _error{};
-};
-
-template<typename TValue>
-using ErrorOr = ResultObject<TValue, Message>;
 }
