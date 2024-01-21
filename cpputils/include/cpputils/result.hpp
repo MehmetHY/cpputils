@@ -4,6 +4,8 @@
 #include <type_traits>
 #include "nullable.hpp"
 #include <list>
+#include <functional>
+#include <map>
 
 namespace cu
 {
@@ -178,6 +180,27 @@ public:
     const std::list<std::string>& messages() const noexcept
     {
         return _messages;
+    }
+};
+
+template<typename TStatus>
+class StatusActionMapper
+{
+    std::map<TStatus, std::function<void(void)>> _map{};
+
+public:
+    StatusActionMapper<TStatus>& bind(TStatus                   status,
+                                      std::function<void(void)> action)
+    {
+        _map[std::forward<TStatus>(status)] = std::move(action);
+
+        return *this;
+    }
+
+    void execute(const std::remove_cvref_t<TStatus>& status)
+    {
+        if (_map.contains(status))
+            _map[status]();
     }
 };
 

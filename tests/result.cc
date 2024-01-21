@@ -211,3 +211,21 @@ TEST(resultcollector_tests, non_empty_messages_gets_added_to_list)
 
     EXPECT_EQ(3, collector.messages().size());
 }
+
+TEST(statusactionmapper_tests, execute_calls_binded_callback)
+{
+    StatusActionMapper<std::string> mapper;
+    bool                            status1Executed{};
+    bool                            status2Executed{};
+    bool                            status3Executed{};
+
+    mapper.bind("status 1", [&status1Executed] { status1Executed = true; });
+    mapper.bind("status 2", [&status2Executed] { status2Executed = true; });
+    mapper.bind("status 3", [&status3Executed] { status3Executed = true; });
+
+    mapper.execute("status 2");
+
+    EXPECT_FALSE(status1Executed);
+    EXPECT_TRUE(status2Executed);
+    EXPECT_FALSE(status3Executed);
+}
