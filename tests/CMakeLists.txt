@@ -7,6 +7,7 @@ project(cpputilstests VERSION 0.1 LANGUAGES CXX)
 enable_testing()
 
 add_executable(cpputilstests
+    any.cc
     result.cc
     event.cc
     nullable.cc

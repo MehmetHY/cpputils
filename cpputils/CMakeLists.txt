@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 project(cpputilssrc VERSION 0.1 LANGUAGES CXX)
 
 add_library(cpputilssrc SHARED
+    include/cpputils/any.hpp
     include/cpputils/export.hpp
     include/cpputils/result.hpp
     include/cpputils/event.hpp
