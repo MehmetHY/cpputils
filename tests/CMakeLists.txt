@@ -31,4 +31,4 @@ target_link_libraries(cpputilstests PRIVATE GTest::gtest_main)
 include(GoogleTest)
 gtest_discover_tests(cpputilstests)
 
-target_link_libraries(cpputilstests PRIVATE cpputilssrc)
+target_link_libraries(cpputilstests PRIVATE cpputils::cpputils)

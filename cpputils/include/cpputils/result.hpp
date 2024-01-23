@@ -12,8 +12,7 @@ namespace cu
 
 class Result
 {
-    bool        _succeeded;
-    std::string _message;
+#pragma region _________________________ Constructors __________________________
 
 public:
     Result(bool succeeded = true, std::string message = {})
@@ -22,6 +21,11 @@ public:
     {
     }
 
+#pragma endregion
+
+#pragma region ___________________________ Methods _____________________________
+
+public:
     bool succeeded() const noexcept
     {
         return _succeeded;
@@ -36,12 +40,22 @@ public:
     {
         return _message;
     }
+
+#pragma endregion
+
+#pragma region ____________________________ Fields _____________________________
+
+private:
+    bool        _succeeded;
+    std::string _message;
+
+#pragma endregion
 };
 
 template<typename TData>
 class DataResult : public Result
 {
-    Nullable<TData> _data{};
+#pragma region _________________________ Constructors __________________________
 
 public:
     DataResult(TData data, std::string message = {})
@@ -55,6 +69,11 @@ public:
     {
     }
 
+#pragma endregion
+
+#pragma region ___________________________ Methods _____________________________
+
+public:
     std::remove_reference_t<TData>& data()
     {
         if (failed())
@@ -63,13 +82,21 @@ public:
 
         return _data.get();
     }
+
+#pragma endregion
+
+#pragma region ____________________________ Fields _____________________________
+
+private:
+    Nullable<TData> _data{};
+
+#pragma endregion
 };
 
 template<typename TStatus, typename TData>
 class Response
 {
-    TStatus         _status;
-    Nullable<TData> _data{};
+#pragma region _________________________ Constructors __________________________
 
 public:
     Response(TStatus status)
@@ -83,6 +110,11 @@ public:
     {
     }
 
+#pragma endregion
+
+#pragma region ___________________________ Methods _____________________________
+
+public:
     const std::remove_cvref_t<TStatus>& status() const noexcept
     {
         return _status;
@@ -95,13 +127,22 @@ public:
 
         return _data.get();
     }
+
+#pragma endregion
+
+#pragma region ____________________________ Fields _____________________________
+
+private:
+    TStatus         _status;
+    Nullable<TData> _data{};
+
+#pragma endregion
 };
 
 template<typename TStatusType>
 class Status
 {
-    TStatusType _status;
-    std::string _message;
+#pragma region _________________________ Constructors __________________________
 
 public:
     Status(TStatusType status, std::string message = {})
@@ -110,6 +151,11 @@ public:
     {
     }
 
+#pragma endregion
+
+#pragma region ___________________________ Methods _____________________________
+    
+public:
     const std::remove_cvref_t<TStatusType>& status() const noexcept
     {
         return _status;
@@ -119,12 +165,22 @@ public:
     {
         return _message;
     }
+
+#pragma endregion
+
+#pragma region ____________________________ Fields _____________________________
+
+private:
+    TStatusType _status;
+    std::string _message;
+
+#pragma endregion
 };
 
 template<typename TStatusType, typename TData>
 class DataStatus : public Status<TStatusType>
 {
-    Nullable<TData> _data{};
+#pragma region _________________________ Constructors __________________________
 
 public:
     DataStatus(TStatusType status, std::string message = {})
@@ -140,6 +196,11 @@ public:
     {
     }
 
+#pragma endregion
+
+#pragma region ___________________________ Methods _____________________________
+
+public:
     std::remove_reference_t<TData>& data()
     {
         if (_data.isNull())
@@ -147,13 +208,20 @@ public:
 
         return _data.get();
     }
+
+#pragma endregion
+
+#pragma region ____________________________ Fields _____________________________
+
+private:
+    Nullable<TData> _data{};
+
+#pragma endregion
 };
 
 class ResultCollector
 {
-    bool                   _anySucceeded{};
-    bool                   _anyFailed{};
-    std::list<std::string> _messages{};
+#pragma region ___________________________ Methods _____________________________
 
 public:
     void addResult(const Result& result)
@@ -181,12 +249,23 @@ public:
     {
         return _messages;
     }
+
+#pragma endregion
+
+#pragma region ____________________________ Fields _____________________________
+
+private:
+    bool                   _anySucceeded{};
+    bool                   _anyFailed{};
+    std::list<std::string> _messages{};
+
+#pragma endregion
 };
 
 template<typename TStatus>
 class StatusActionMapper
 {
-    std::map<TStatus, std::function<void(void)>> _map{};
+#pragma region ___________________________ Methods _____________________________
 
 public:
     StatusActionMapper<TStatus>& bind(TStatus                   status,
@@ -202,6 +281,15 @@ public:
         if (_map.contains(status))
             _map[status]();
     }
+
+#pragma endregion
+
+#pragma region ____________________________ Fields _____________________________
+
+private:
+    std::map<TStatus, std::function<void(void)>> _map{};
+
+#pragma endregion
 };
 
 }

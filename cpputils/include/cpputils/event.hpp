@@ -4,41 +4,63 @@
 #include <vector>
 #include <algorithm>
 #include <functional>
-#include "concepts.hpp"
+#include <concepts>
+#include <type_traits>
 
 namespace cu
 {
+template<typename T>
+concept NotRRef = !std::is_rvalue_reference_v<T>;
+
 template<NotRRef... TArgs>
 class EventListener;
 
 template<NotRRef... TArgs>
 class CU_EXPORT Event
 {
-public: // Types ______________________________________________________________
+#pragma region ____________________________ Types ______________________________
+
+public:
     friend EventListener<TArgs...>;
 
-public: // Constructors & Destructor __________________________________________
+#pragma endregion
+
+#pragma region _________________________ Constructors __________________________
+
+public:
     Event() noexcept = default;
     virtual ~Event() noexcept;
 
-public: // Move Semantics _____________________________________________________
+#pragma endregion
+
+#pragma region ________________________ Move Semantics _________________________
+
+public:
     Event(Event&&) noexcept;
     virtual Event& operator=(Event&&) noexcept;
 
-public: // Copy Semantics _____________________________________________________
+#pragma endregion
+
+#pragma region ________________________ Copy Semantics _________________________
+
+public:
     Event(const Event&);
     virtual Event& operator=(const Event&);
 
-public: // Operators __________________________________________________________
+#pragma endregion
+
+#pragma region ___________________________ Operators ___________________________
+
+public:
     void operator+=(EventListener<TArgs...>& listener);
     void operator-=(EventListener<TArgs...>& listener);
     void operator()(TArgs... args);
 
-public: // Static _____________________________________________________________
+#pragma endregion
 
-public: // Events _____________________________________________________________
+#pragma region ___________________________ Methods _____________________________
 
-public: // Methods ____________________________________________________________
+public:
 private:
     void addListener(EventListener<TArgs...>* listener)
     {
@@ -55,17 +77,29 @@ private:
             _listeners.erase(it);
     }
 
-private: // Fields ____________________________________________________________
+#pragma endregion
+
+#pragma region ____________________________ Fields _____________________________
+
+private:
     std::vector<EventListener<TArgs...>*> _listeners{};
+
+#pragma endregion
 };
 
 template<NotRRef... TArgs>
 class CU_EXPORT EventListener
 {
+#pragma region ____________________________ Types ______________________________
+
 public: // Types ______________________________________________________________
     friend Event<TArgs...>;
 
-public: // Constructors & Destructor __________________________________________
+#pragma endregion
+
+#pragma region _________________________ Constructors __________________________
+
+public:
     EventListener(std::function<void(TArgs...)> callback) noexcept
         : _callback{std::move(callback)}
     {
@@ -73,24 +107,38 @@ public: // Constructors & Destructor __________________________________________
 
     virtual ~EventListener() noexcept;
 
-public: // Move Semantics _____________________________________________________
+#pragma endregion
+
+#pragma region ________________________ Move Semantics _________________________
+
+public:
     EventListener(EventListener<TArgs...>&&) noexcept;
     virtual EventListener<TArgs...>& operator=(
         EventListener<TArgs...>&&) noexcept;
 
-public: // Copy Semantics _____________________________________________________
+#pragma endregion
+
+#pragma region ________________________ Copy Semantics _________________________
+
+public:
     EventListener(const EventListener<TArgs...>&);
     virtual EventListener<TArgs...>& operator=(const EventListener<TArgs...>&);
 
-public: // Operators __________________________________________________________
+#pragma endregion
+
+#pragma region ___________________________ Operators ___________________________
+
+public:
     void operator()(TArgs... args)
     {
         _callback(std::forward<TArgs>(args)...);
     }
 
-public: // Events _____________________________________________________________
+#pragma endregion
 
-public: // Methods ____________________________________________________________
+#pragma region ___________________________ Methods _____________________________
+
+public:
     void setCallback(std::function<void(TArgs...)> callback)
     {
         _callback = std::move(callback);
@@ -112,9 +160,15 @@ private:
             _events.erase(it);
     }
 
-private: // Fields ____________________________________________________________
+#pragma endregion
+
+#pragma region ____________________________ Fields _____________________________
+
+private:
     std::function<void(TArgs...)> _callback;
     std::vector<Event<TArgs...>*> _events{};
+
+#pragma endregion
 };
 
 template<NotRRef... TArgs>
