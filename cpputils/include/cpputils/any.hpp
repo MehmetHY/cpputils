@@ -33,10 +33,21 @@ private:
             return true;
         }
 
+        virtual constexpr bool isReference() const noexcept
+        {
+            return false;
+        }
+
         template<typename T>
         bool isSameType() const noexcept
         {
-            return isValid() && type == std::type_index{typeid(T)};
+            if (!isValid())
+                return false;
+
+            if (isReference() != std::is_reference_v<T>)
+                return false;
+
+            return type == std::type_index{typeid(T)};
         }
 
         virtual std::unique_ptr<Wrapper> clone() const = 0;
@@ -72,6 +83,11 @@ private:
                 return std::make_unique<ValidWrapper<T>>(data);
             else
                 throw std::runtime_error("Type is not copyable.");
+        }
+
+        constexpr bool isReference() const noexcept override
+        {
+            return std::is_reference_v<T>;
         }
     };
 
@@ -145,7 +161,10 @@ public:
     template<typename T>
     operator T&() &
     {
-        return get<T>();
+        if (_data->isReference())
+            return get<T&>();
+        else
+            return get<T>();
     }
 
     template<typename T>

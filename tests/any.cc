@@ -108,6 +108,16 @@ TEST(any_tests, can_implicitly_casts_to_type)
     EXPECT_EQ(&val, &any.get<int&>());
 }
 
+TEST(any_tests, can_implicitly_cast_to_reference)
+{
+    int     v;
+    cu::Any any;
+    any.emplace<int&>(v);
+    int& r = any;
+
+    EXPECT_EQ(&r, &v);
+}
+
 TEST(any_tests, can_explicitly_cast_to_type)
 {
     auto any{cu::Any::create<std::unique_ptr<int>>(std::make_unique<int>(32))};
@@ -151,7 +161,7 @@ TEST(any_tests, moving_any_will_reset)
 TEST(any_tests, can_copy_construct)
 {
     cu::Any any1;
-    int v{32};
+    int     v{32};
     any1.emplace<int>(v);
     cu::Any any2{any1};
 
@@ -162,7 +172,7 @@ TEST(any_tests, can_copy_assign)
 {
     cu::Any any1;
     cu::Any any2;
-    int v{32};
+    int     v{32};
     any1 = v;
     any2 = any1;
 
@@ -171,21 +181,23 @@ TEST(any_tests, can_copy_assign)
 
 TEST(any_tests, using_copy_constructor_on_non_copyable_throws)
 {
-    cu::Any any1{cu::Any::create<std::unique_ptr<int>>(std::make_unique<int>(32))};
+    cu::Any any1{
+        cu::Any::create<std::unique_ptr<int>>(std::make_unique<int>(32))};
 
     EXPECT_THROW({ cu::Any any2{any1}; }, std::runtime_error);
 }
 
 TEST(any_tests, using_copy_assign_on_non_copyable_throws)
 {
-    cu::Any any1{cu::Any::create<std::unique_ptr<int>>(std::make_unique<int>(32))};
+    cu::Any any1{
+        cu::Any::create<std::unique_ptr<int>>(std::make_unique<int>(32))};
 
     EXPECT_THROW({ cu::Any any2 = any1; }, std::runtime_error);
 }
 
 TEST(any_tests, can_copy_references)
 {
-    int v;
+    int     v;
     cu::Any any1;
     any1.emplace<int&>(v);
     cu::Any any2 = any1;
