@@ -38,6 +38,8 @@ private:
         {
             return isValid() && type == std::type_index{typeid(T)};
         }
+
+        virtual std::unique_ptr<Wrapper> clone() const = 0;
     };
 
     struct InvalidWrapper : public Wrapper
@@ -45,6 +47,11 @@ private:
         constexpr bool isValid() const noexcept override
         {
             return false;
+        }
+
+        std::unique_ptr<Wrapper> clone() const override
+        {
+            return std::make_unique<InvalidWrapper>();
         }
     };
 
@@ -57,6 +64,14 @@ private:
             : Wrapper(typeid(T))
             , data{std::forward<T>(data)}
         {
+        }
+
+        std::unique_ptr<Wrapper> clone() const override
+        {
+            if constexpr (std::is_copy_constructible_v<T>)
+                return std::make_unique<ValidWrapper<T>>(data);
+            else
+                throw std::runtime_error("Type is not copyable.");
         }
     };
 
@@ -102,6 +117,22 @@ public:
 
         _data = std::move(other._data);
         other.reset();
+
+        return *this;
+    }
+
+#pragma endregion
+
+#pragma region ________________________ Copy Semantics _________________________
+
+    Any(const Any& other)
+    {
+        _data = other._data->clone();
+    }
+
+    Any& operator=(const Any& other)
+    {
+        _data = other._data->clone();
 
         return *this;
     }
