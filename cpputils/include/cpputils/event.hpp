@@ -1,26 +1,62 @@
 #pragma once
 
-#include "export.hpp"
-#include <vector>
-#include <algorithm>
+#include <list>
 #include <functional>
-#include <concepts>
-#include <type_traits>
 
 namespace cu
 {
-template<typename T>
-concept NotRRef = !std::is_rvalue_reference_v<T>;
 
-template<NotRRef... TArgs>
-class EventListener;
+template<typename... TArgs>
+class EventHandler;
 
-template<NotRRef... TArgs>
-class CU_EXPORT Event
+template<typename... TArgs>
+class EventListener
 {
 #pragma region ____________________________ Types ______________________________
 
 public:
+    friend EventHandler<TArgs...>;
+
+#pragma endregion
+
+#pragma region _________________________ Constructors __________________________
+
+public:
+    EventListener(std::function<void(TArgs...)> callback);
+    ~EventListener();
+
+#pragma endregion
+
+#pragma region ________________________ Move Semantics _________________________
+
+public:
+    EventListener(EventListener<TArgs...>&& other);
+    EventListener<TArgs...>& operator=(EventListener<TArgs...>&& other);
+
+#pragma endregion
+
+#pragma region ________________________ Copy Semantics _________________________
+
+public:
+    EventListener(const EventListener<TArgs...>& other);
+    EventListener<TArgs...>& operator=(const EventListener<TArgs...>& other);
+
+#pragma endregion
+
+#pragma region ____________________________ Fields _____________________________
+
+private:
+    std::function<void(TArgs...)>      _callback;
+    std::list<EventHandler<TArgs...>*> _handlers{};
+
+#pragma endregion
+};
+
+template<typename... TArgs>
+class EventHandler
+{
+#pragma region ____________________________ Types ______________________________
+
     friend EventListener<TArgs...>;
 
 #pragma endregion
@@ -28,24 +64,24 @@ public:
 #pragma region _________________________ Constructors __________________________
 
 public:
-    Event() noexcept = default;
-    virtual ~Event() noexcept;
+    EventHandler() = default;
+    ~EventHandler();
 
 #pragma endregion
 
 #pragma region ________________________ Move Semantics _________________________
 
 public:
-    Event(Event&&) noexcept;
-    virtual Event& operator=(Event&&) noexcept;
+    EventHandler(EventHandler<TArgs...>&& other);
+    EventHandler<TArgs...>& operator=(EventHandler<TArgs...>&& other);
 
 #pragma endregion
 
 #pragma region ________________________ Copy Semantics _________________________
 
 public:
-    Event(const Event&);
-    virtual Event& operator=(const Event&);
+    EventHandler(const EventHandler<TArgs...>& other);
+    EventHandler<TArgs...>& operator=(const EventHandler<TArgs...>& other);
 
 #pragma endregion
 
@@ -58,251 +94,197 @@ public:
 
 #pragma endregion
 
-#pragma region ___________________________ Methods _____________________________
-
-public:
-private:
-    void addListener(EventListener<TArgs...>* listener)
-    {
-        if (std::find(_listeners.cbegin(), _listeners.cend(), listener) ==
-            _listeners.cend())
-            _listeners.push_back(listener);
-    }
-
-    void removeListener(EventListener<TArgs...>* listener)
-    {
-        auto it = std::find(_listeners.begin(), _listeners.end(), listener);
-
-        if (it != _listeners.end())
-            _listeners.erase(it);
-    }
-
-#pragma endregion
-
 #pragma region ____________________________ Fields _____________________________
 
 private:
-    std::vector<EventListener<TArgs...>*> _listeners{};
+    bool                                _invoking{};
+    std::list<EventListener<TArgs...>*> _listeners{};
+    std::list<EventListener<TArgs...>*> _listenersToAdd{};
+    std::list<EventListener<TArgs...>*> _listenersToRemove{};
 
 #pragma endregion
 };
 
-template<NotRRef... TArgs>
-class CU_EXPORT EventListener
+#pragma region EventListenerImpl
+
+template<typename... TArgs>
+EventListener<TArgs...>::EventListener(std::function<void(TArgs...)> callback)
+    : _callback{std::move(callback)}
 {
-#pragma region ____________________________ Types ______________________________
-
-public: // Types ______________________________________________________________
-    friend Event<TArgs...>;
-
-#pragma endregion
-
-#pragma region _________________________ Constructors __________________________
-
-public:
-    EventListener(std::function<void(TArgs...)> callback) noexcept
-        : _callback{std::move(callback)}
-    {
-    }
-
-    virtual ~EventListener() noexcept;
-
-#pragma endregion
-
-#pragma region ________________________ Move Semantics _________________________
-
-public:
-    EventListener(EventListener<TArgs...>&&) noexcept;
-    virtual EventListener<TArgs...>& operator=(
-        EventListener<TArgs...>&&) noexcept;
-
-#pragma endregion
-
-#pragma region ________________________ Copy Semantics _________________________
-
-public:
-    EventListener(const EventListener<TArgs...>&);
-    virtual EventListener<TArgs...>& operator=(const EventListener<TArgs...>&);
-
-#pragma endregion
-
-#pragma region ___________________________ Operators ___________________________
-
-public:
-    void operator()(TArgs... args)
-    {
-        _callback(std::forward<TArgs>(args)...);
-    }
-
-#pragma endregion
-
-#pragma region ___________________________ Methods _____________________________
-
-public:
-    void setCallback(std::function<void(TArgs...)> callback)
-    {
-        _callback = std::move(callback);
-    }
-
-private:
-    void addEvent(Event<TArgs...>* event)
-    {
-        if (std::find(_events.cbegin(), _events.cend(), event) ==
-            _events.cend())
-            _events.push_back(event);
-    }
-
-    void removeEvent(Event<TArgs...>* event)
-    {
-        auto it = std::find(_events.begin(), _events.end(), event);
-
-        if (it != _events.end())
-            _events.erase(it);
-    }
-
-#pragma endregion
-
-#pragma region ____________________________ Fields _____________________________
-
-private:
-    std::function<void(TArgs...)> _callback;
-    std::vector<Event<TArgs...>*> _events{};
-
-#pragma endregion
-};
-
-template<NotRRef... TArgs>
-Event<TArgs...>::~Event() noexcept
-{
-    for (EventListener<TArgs...>* listener : _listeners)
-        listener->removeEvent(this);
 }
 
-template<NotRRef... TArgs>
-Event<TArgs...>::Event(Event<TArgs...>&& other) noexcept
+template<typename... TArgs>
+EventListener<TArgs...>::~EventListener()
 {
-    for (auto it = other._listeners.begin(); it != other._listeners.end();
-         it      = other._listeners.begin())
-    {
-        auto& listener = *(*it);
-        (*this) += listener;
-        other -= listener;
-    }
+    for (auto handler : _handlers)
+        handler->_listeners.remove(this);
 }
 
-template<NotRRef... TArgs>
-Event<TArgs...>&
-Event<TArgs...>::operator=(Event<TArgs...>&& other) noexcept
-{
-    for (auto it = other._listeners.begin(); it != other._listeners.end();
-         it      = other._listeners.begin())
-    {
-        auto& listener = *(*it);
-        (*this) += listener;
-        other -= listener;
-    }
-
-    return *this;
-}
-
-template<NotRRef... TArgs>
-Event<TArgs...>::Event(const Event<TArgs...>& other)
-{
-    for (auto listener : other._listeners)
-        (*this) += *listener;
-}
-
-template<NotRRef... TArgs>
-Event<TArgs...>&
-Event<TArgs...>::operator=(const Event<TArgs...>& other)
-{
-    for (auto listener : other._listeners)
-        (*this) += *listener;
-
-    return *this;
-}
-
-template<NotRRef... TArgs>
-void
-Event<TArgs...>::operator+=(EventListener<TArgs...>& listener)
-{
-    addListener(&listener);
-    listener.addEvent(this);
-}
-
-template<NotRRef... TArgs>
-void
-Event<TArgs...>::operator-=(EventListener<TArgs...>& listener)
-{
-    removeListener(&listener);
-    listener.removeEvent(this);
-}
-
-template<NotRRef... TArgs>
-void
-Event<TArgs...>::operator()(TArgs... args)
-{
-    for (EventListener<TArgs...>* listener : _listeners)
-        (*listener)(args...);
-}
-
-template<NotRRef... TArgs>
-EventListener<TArgs...>::~EventListener() noexcept
-{
-    for (Event<TArgs...>* event : _events)
-        event->removeListener(this);
-}
-
-template<NotRRef... TArgs>
-EventListener<TArgs...>::EventListener(EventListener<TArgs...>&& other) noexcept
+template<typename... TArgs>
+EventListener<TArgs...>::EventListener(EventListener<TArgs...>&& other)
 {
     _callback = std::move(other._callback);
+    _handlers = std::move(other._handlers);
 
-    for (auto it = other._events.begin(); it != other._events.end();
-         it      = other._events.begin())
+    for (auto handler : _handlers)
     {
-        auto& event = *(*it);
-        event += *this;
-        event -= other;
+        handler->_listeners.remove(&other);
+        handler->_listeners.push_back(this);
     }
 }
 
-template<NotRRef... TArgs>
+template<typename... TArgs>
 EventListener<TArgs...>&
-EventListener<TArgs...>::operator=(EventListener<TArgs...>&& other) noexcept
+EventListener<TArgs...>::operator=(EventListener<TArgs...>&& other)
 {
     _callback = std::move(other._callback);
+    _handlers = std::move(other._handlers);
 
-    for (auto it = other._events.begin(); it != other._events.end();
-         it      = other._events.begin())
+    for (auto handler : _handlers)
     {
-        auto& event = *(*it);
-        event += *this;
-        event -= other;
+        handler->_listeners.remove(&other);
+        handler->_listeners.push_back(this);
     }
 
     return *this;
 }
 
-template<NotRRef... TArgs>
+template<typename... TArgs>
 EventListener<TArgs...>::EventListener(const EventListener<TArgs...>& other)
 {
     _callback = other._callback;
+    _handlers = other._handlers;
 
-    for (auto event : other._events)
-        *event += *this;
+    for (auto handler : _handlers)
+        handler->_listeners.push_back(this);
 }
 
-template<NotRRef... TArgs>
+template<typename... TArgs>
 EventListener<TArgs...>&
 EventListener<TArgs...>::operator=(const EventListener<TArgs...>& other)
 {
     _callback = other._callback;
+    _handlers = other._handlers;
 
-    for (auto event : other._events)
-        *event += *this;
+    for (auto handler : _handlers)
+        handler->_listeners.push_back(this);
 
     return *this;
 }
+
+#pragma endregion
+
+#pragma region EventHandlerImpl
+
+template<typename... TArgs>
+EventHandler<TArgs...>::~EventHandler()
+{
+    for (auto listener : _listeners)
+        listener->_handlers.remove(this);
+}
+
+template<typename... TArgs>
+EventHandler<TArgs...>::EventHandler(EventHandler<TArgs...>&& other)
+{
+    _listeners = std::move(other._listeners);
+
+    for (auto listener : _listeners)
+    {
+        listener->_handlers.remove(&other);
+        listener->_handlers.push_back(this);
+    }
+}
+
+template<typename... TArgs>
+EventHandler<TArgs...>&
+EventHandler<TArgs...>::operator=(EventHandler<TArgs...>&& other)
+{
+    _listeners = std::move(other._listeners);
+
+    for (auto listener : _listeners)
+    {
+        listener->_handlers.remove(&other);
+        listener->_handlers.push_back(this);
+    }
+
+    return *this;
+}
+
+template<typename... TArgs>
+EventHandler<TArgs...>::EventHandler(const EventHandler<TArgs...>& other)
+{
+    _listeners = other._listeners;
+
+    for (auto listener : _listeners)
+        listener->_handlers.push_back(this);
+}
+
+template<typename... TArgs>
+EventHandler<TArgs...>&
+EventHandler<TArgs...>::operator=(const EventHandler<TArgs...>& other)
+{
+    _listeners = other._listeners;
+
+    for (auto listener : _listeners)
+        listener->_handlers.push_back(this);
+
+    return *this;
+}
+
+template<typename... TArgs>
+void
+EventHandler<TArgs...>::operator+=(EventListener<TArgs...>& listener)
+{
+    if (_invoking)
+        _listenersToAdd.push_back(&listener);
+    else
+    {
+        _listeners.push_back(&listener);
+        listener._handlers.push_back(this);
+    }
+}
+
+template<typename... TArgs>
+void
+EventHandler<TArgs...>::operator-=(EventListener<TArgs...>& listener)
+{
+    if (_invoking)
+        _listenersToRemove.push_back(&listener);
+    else
+    {
+        _listeners.remove(&listener);
+        listener._handlers.remove(this);
+    }
+}
+
+template<typename... TArgs>
+void
+EventHandler<TArgs...>::operator()(TArgs... args)
+{
+    _invoking = true;
+
+    for (auto listener : _listeners)
+        listener->_callback(args...);
+
+    for (auto listener : _listenersToAdd)
+    {
+        _listeners.push_back(listener);
+        listener->_handlers.push_back(this);
+    }
+
+    _listenersToAdd.clear();
+
+    for (auto listener : _listenersToRemove)
+    {
+        _listeners.remove(listener);
+        listener->_handlers.remove(this);
+    }
+
+    _listenersToRemove.clear();
+
+    _invoking = false;
+}
+
+#pragma endregion
 
 }
